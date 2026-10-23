@@ -28,11 +28,18 @@ NOMI = {"cliente": "Cliente Trustpilot"}
 
 def pagina(pg, n):
     for tentativo in range(3):
-        pg.goto(URL.format(n), wait_until="domcontentloaded", timeout=60000)
-        for _ in range(30):  # la pagina di verifica AWS WAF passa da sola in pochi secondi
-            if pg.locator("#__NEXT_DATA__").count():
-                return json.loads(pg.locator("#__NEXT_DATA__").inner_text())["props"]["pageProps"]
-            time.sleep(1)
+        try:
+            pg.goto(URL.format(n), wait_until="domcontentloaded", timeout=60000)
+            # la pagina di verifica AWS WAF si ricarica da sola: aspetta quella vera
+            for _ in range(45):
+                try:
+                    if pg.locator("#__NEXT_DATA__").count():
+                        return json.loads(pg.locator("#__NEXT_DATA__").inner_text())["props"]["pageProps"]
+                except Exception:
+                    pass  # contesto distrutto dal ricaricamento: riprova
+                time.sleep(1)
+        except Exception as e:
+            print(f"pagina {n}, tentativo {tentativo + 1}: {e}", file=sys.stderr)
         time.sleep(5 * (tentativo + 1))
     raise RuntimeError(f"pagina {n}: Trustpilot non ha risposto")
 
